@@ -28,29 +28,33 @@ lasd   # The daemon
 lascli # Used to interface with the daemon
 ```
 
-##### Run on regtest
-1.. Bring up the necessary docker containers, one bitcoind node and two lnd-nodes:
-```
-$ docker-compose up
+If you already have a lnd-node you want to connect to, run `lasd --network=testnet` and everything should connect.
+
+### Run on regtest
+Here are all the commands in two block, can be copy pasted
+```shell script
+# Installs direnv, a manager for environment variables
+sudo apt-get install direnv
+# you need to hook direnv into your shell: https://direnv.net/docs/hook.html
+cp .envrc-example .envrc
+
 ```
 
-2.. Open a new terminal and connect the two nodes
-```
-$ scripts/connect-alice-bob.sh
+Then set everything up:
+```shell script
+# Bring up the necessary docker containers, one bitcoind node and two lnd-nodes
+docker-compose up -d 
+scripts/connect-alice-bob.sh # Funds and connects the nodes
+
 ```
 
-3.. Start the daemon
+
+##### Start the daemon
 ```
 $ ./lasd
 ```
 
 Now you're ready to go! Install the [Lightning Assets Client](https://github.com/ArcaneCryptoAS/lassets-client), and get dirty!
-
-##### Run on testnet
-It should automatically connect to your testnet lnd node
-```
-lasd --network=testnet
-```
 
 ### Contributions 
 Contributions are very welcome, just go ahead and open issues/pull requests.
@@ -60,8 +64,11 @@ Contributions are very welcome, just go ahead and open issues/pull requests.
 The project requires a lnd node running on your machine, regtest, testnet and
  mainnet is supported. Check out the official repo for installation
   instructions: https://github.com/lightningnetwork/lnd
-
+  
 ### Optional dependencies
+### Docker
+Instructions can be found here: https://docs.docker.com/install/linux/docker-ce/ubuntu/ 
+
 #### grpc-gateway
 If you want to make changes to the proto file, you need to be able to recompile the .proto files in the larpc folder. There is a script `./gen_protos.sh` to generate new ones.
 Installation instructions copied from [official repo](https://github.com/grpc).
