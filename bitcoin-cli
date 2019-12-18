@@ -2,7 +2,7 @@
 
 # If the -testnet flag hasn't been passed in, we add -regtest
 if [[ $* != *-chain=test* ]]; then
-    NETWORK_FLAG="-regtest"
+    NETWORK_FLAG="regtest"
 fi
 
-docker exec --user bitcoin la-bitcoind bitcoin-cli chain=$NETWORK_FLAG -rpcuser=$RPCUSER -rpcpassword=$RPCPASS $@
+docker exec --user bitcoin la-bitcoind bitcoin-cli -chain=$NETWORK_FLAG -rpcuser=$RPCUSER -rpcpassword=$RPCPASS $@
