@@ -6,9 +6,9 @@ set -e
 # echo executed commands
 set -o xtrace
 
-BOB_IP=`docker inspect --format '{{json .NetworkSettings}}' la-bob-lnd | jq .Networks.server_default.IPAddress --raw-output`
+BOB_IP=`docker inspect --format '{{json .NetworkSettings}}' la-bob-lnd | jq '.Networks["lassets-server_default"]'.IPAddress -r`
 BOB_PUBKEY=`./lnd-bob getinfo | jq --raw-output .identity_pubkey`
-ALICE_IP=`docker inspect --format '{{json .NetworkSettings}}' la-alice-lnd | jq .Networks.server_default.IPAddress --raw-output`
+ALICE_IP=`docker inspect --format '{{json .NetworkSettings}}' la-alice-lnd | jq '.Networks["lassets-server_default"]'.IPAddress -r`
 
 ALICE_ADDR=`./lnd-alice newaddress p2wkh | jq --raw-output .address`
 BOB_ADDR=`./lnd-bob newaddress p2wkh | jq --raw-output .address`
