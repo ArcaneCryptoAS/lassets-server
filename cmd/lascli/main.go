@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	"github.com/urfave/cli"
-	"gitlab.com/arcanecrypto/lnassets/server/larpc"
 	"google.golang.org/grpc"
 	"os"
 
-	"gitlab.com/arcanecrypto/lnassets/server/build"
+	"github.com/ArcaneCryptoAS/lassets-server/build"
+	"github.com/ArcaneCryptoAS/lassets-server/larpc"
 )
 
 // default value for flags

@@ -11,6 +11,9 @@ import (
 	"path"
 	"time"
 
+	"github.com/ArcaneCryptoAS/lassets-server/bitmex"
+	"github.com/ArcaneCryptoAS/lassets-server/build"
+	"github.com/ArcaneCryptoAS/lassets-server/larpc"
 	"github.com/ArcaneCryptoAS/lndutil"
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/mux"
@@ -18,9 +21,6 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"gitlab.com/arcanecrypto/lnassets/server/bitmex"
-	"gitlab.com/arcanecrypto/lnassets/server/build"
-	"gitlab.com/arcanecrypto/lnassets/server/larpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gitlab.com/arcanecrypto/lnassets/server/larpc"
 	"math"
 
 	"github.com/boltdb/bolt"
@@ -14,7 +13,8 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/sirupsen/logrus"
 
-	"gitlab.com/arcanecrypto/lnassets/server/bitmex"
+	"github.com/ArcaneCryptoAS/lassets-server/bitmex"
+	"github.com/ArcaneCryptoAS/lassets-server/larpc"
 )
 
 var _ larpc.AssetServerServer = &AssetServer{}

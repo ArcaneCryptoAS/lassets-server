@@ -6,7 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"gitlab.com/arcanecrypto/lnassets/server/larpc"
+	"github.com/ArcaneCryptoAS/lassets-server/larpc"
 )
 
 var log = logrus.New()

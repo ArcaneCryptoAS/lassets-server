@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/lightningnetwork/lnd/lnrpc"
-	"gitlab.com/arcanecrypto/lnassets/server/larpc"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
+
+	"github.com/ArcaneCryptoAS/lassets-server/larpc"
+	"github.com/lightningnetwork/lnd/lnrpc"
 )
 
 // PayInvoice does not exist in grpc, but is a util method defined on an AssetServer
