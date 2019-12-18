@@ -41,11 +41,11 @@ var (
 	defaultRestPort      = 8080
 	defaultLadDir        = cleanAndExpandPath("~/.las")
 	defaultNetwork       = "regtest"
-	defaultPercentMargin = 0.3
+	defaultPercentMargin = 1.0
 
 	// this should be changed to lnd-path when we start deploying it to servers
 	defaultLndDir     = cleanAndExpandPath("~/.lnd")
-	defaultLndRpcPort = "localhost:10011"
+	defaultLndRpcPort = "localhost:10009"
 )
 
 // define possible flag names here
