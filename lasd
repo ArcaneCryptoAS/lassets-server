@@ -1,0 +1,3 @@
+#! /usr/bin/env bash
+
+lasd --laddir=. --lndrpchost=localhost:10011 --lnddir=docker/.alice --insecure "$@"

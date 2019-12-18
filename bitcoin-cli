@@ -1,0 +1,8 @@
+#! /usr/bin/env bash
+
+# If the -testnet flag hasn't been passed in, we add -regtest
+if [[ $* != *-chain=test* ]]; then
+    NETWORK_FLAG="-regtest"
+fi
+
+docker exec --user bitcoin lna-bitcoind bitcoin-cli chain=$NETWORK_FLAG -rpcuser=$RPCUSER -rpcpassword=$RPCPASS $@

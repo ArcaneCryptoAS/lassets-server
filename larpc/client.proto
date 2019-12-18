@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package larpc;
+
+option go_package = "arcanecrypto/lnassets-client/larpc";
+
+import "server.proto";
+
+import "google/api/annotations.proto";
+
+service AssetClient {
+    // CreateContract is used to create a contract with the server, but not initiate it yet
+    rpc CreateContract (ClientCreateContractRequest) returns (ClientCreateContractResponse);
+    // OpenContract is used to initiate a new contract with another host
+    rpc OpenContract (ClientOpenContractRequest) returns (ClientOpenContractResponse);
+    // CloseContract is used to close a contract with a specific uuid
+    rpc CloseContract (ClientCloseContractRequest) returns (ClientCloseContractResponse);
+
+    // RequestPaymentRequest is used to allow another party to create a deposit to us
+    rpc RequestPaymentRequest (ClientRequestPaymentRequestRequest) returns (ClientRequestPaymentRequestResponse) {
+        option (google.api.http) = {
+            post: "/request/paymentrequest"
+            body: "*"
+        };
+    }
+
+    // RequestPayment is used to allow another party to demand money from us
+    rpc RequestPayment (ClientRequestPaymentRequest) returns (ClientRequestPaymentResponse) {
+        option (google.api.http) = {
+            post: "/request/payment"
+            body: "*"
+        };
+    }
+
+    // ListContracts lists all contracts in the database
+    rpc ListContracts (ClientListContractsRequest) returns (ClientListContractsResponse);
+
+    // SubscribeContracts returns a stream notified of all new and closed contracts
+    rpc SubscribeClientContracts (ClientSubscribeContractsRequest) returns (stream ClientContract);
+}
+
+
+message ClientContract {
+    string uuid = 1;
+    string asset = 2;
+    double amount = 3;
+
+    int64 amount_sat_margin = 5;
+    int64 amount_sat_init = 6;
+    string margin_invoice = 7;
+    string init_invoice = 8;
+    ladrpc.ContractType contract_type = 9;
+
+    bool invoices_paid = 10;
+}
+
+message ClientCreateContractRequest {
+    string asset = 1;
+    double amount = 2;
+    ladrpc.ContractType contract_type = 3;
+}
+
+message ClientCreateContractResponse {
+    ClientContract contract = 1;
+
+    int64 expected_margin_amount = 2;
+    int64 expected_init_amount = 3;
+    double our_price = 4;
+
+    double server_price = 5;
+    double percent_margin = 6;
+}
+
+message ClientOpenContractRequest {
+    string uuid = 1;
+}
+
+message ClientOpenContractResponse {
+    ClientContract contract = 1;
+}
+
+message ClientCloseContractRequest {
+    string uuid = 1;
+}
+
+message ClientCloseContractResponse {
+
+}
+
+message ClientListContractsRequest {
+}
+
+message ClientListContractsResponse {
+    repeated ClientContract contracts = 1;
+}
+
+message ClientRequestPaymentRequestRequest {
+    int64 amount_sat = 1;
+}
+
+message ClientRequestPaymentRequestResponse {
+    string pay_req = 1;
+}
+
+message ClientRequestPaymentRequest {
+    string pay_req = 1;
+}
+
+message ClientRequestPaymentResponse {
+
+}
+
+message ClientSubscribeContractsRequest {
+
+}

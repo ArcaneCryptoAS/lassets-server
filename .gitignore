@@ -1,0 +1,9 @@
+.idea/
+
+docker/.alice/*
+docker/.bob/*
+laserver.db
+
+.idea/workspace.xml
+
+.envrc

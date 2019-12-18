@@ -1,0 +1,76 @@
+version: '2.2'
+services:
+
+  la-bitcoind:
+    # https://github.com/ruimarinho/docker-bitcoin-core
+    image: ruimarinho/bitcoin-core:0.19
+    container_name: la-bitcoind
+
+    volumes:
+      - la-bitcoin:/home/bitcoin/.bitcoin
+    command:
+      - -debug=rpc
+      - -printtoconsole
+      - -chain=$BITCOIN_NETWORK
+      - -rpcuser=$RPCUSER
+      - -rpcpassword=$RPCPASS
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -txindex
+      - -zmqpubrawtx=tcp://0.0.0.0:$ZMQPUBRAWTX_PORT
+      - -zmqpubrawblock=tcp://0.0.0.0:$ZMQPUBRAWBLOCK_PORT
+
+  la-lnd:
+    build:
+      context: docker/lnd
+      args:
+        # we want uid and gid to be the same as the current user
+        # this is so permissions work out nicely when reading macaroon
+        # files. By default Docker containers run as root, which
+        # prevents us from reading the files we need
+        uid: $uid
+        gid: $gid
+        LND_VERSION: '0.8.2-beta'
+    environment:
+      - RPCUSER
+      - RPCPASS
+      - BITCOIN_NETWORK
+      - RPCHOST=la-bitcoind
+      - DEBUG
+      - ZMQPUBRAWTX_PORT
+      - ZMQPUBRAWBLOCK_PORT
+    command: sh -c './wait-for-bitcoind.sh && ./start-lnd.sh'
+
+  la-alice-lnd:
+    depends_on:
+      - la-bitcoind
+    extends: la-lnd
+    container_name: la-alice-lnd
+    environment:
+      - RPCHOST=la-bitcoind
+    # expose Alice's LND RPC port
+    ports:
+      - '10011:10009'
+    volumes:
+      # Map ./.alice to Alice's LND data dir
+      - ./docker/.alice:/home/lnd/.lnd
+
+  la-bob-lnd:
+    depends_on:
+      - la-bitcoind
+    extends: la-lnd
+    container_name: la-bob-lnd
+    environment:
+      - RPCHOST=la-bitcoind
+    # expose Bob's LND RPC as a different than ALice's port
+    ports:
+      - '10012:10009'
+    volumes:
+      # Map ./.bob to Bobs LND data dir
+      - ./docker/.bob:/home/lnd/.lnd
+
+volumes:
+  la-daemon:
+  # la-bitcoin volume is needed for maintaining blockchain persistence
+  # during bitcoind container recreation.
+  la-bitcoin:

@@ -1,0 +1,15 @@
+# Bitmex
+BITMEX_API_KEY="gijgiei4929-592kkwoeir92" # These are fake, no point in trying
+BITMEX_SECRET_KEY="giriAKGO40GfkwoQBR492xqlvmsGKF4930o17GwoEIRAMut2KG"
+
+# Docker
+export uid=1000 # This should be your user ID: `id -u`
+export gid=1000 # This should be your group ID: `id -g`
+
+# LND/Bitcoin Core
+export LND_DIR=docker/.alice
+export BITCOIN_NETWORK=regtest
+export ZMQPUBRAWBLOCK_PORT=24123
+export ZMQPUBRAWTX_PORT=24124
+export RPCUSER=kek
+export RPCPASS=kek

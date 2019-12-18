@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+package ladrpc;
+
+option go_package = "arcanecrypto/lnassets-client/larpc";
+
+import "google/api/annotations.proto";
+
+service AssetServer {
+    // NewContract is used to initiate a new contract with this server
+    // TODO: Make this secure by adding the node ID to
+    // the contract, thereby only paying invoices that was created
+    // with that node
+
+    rpc NewContract (ServerNewContractRequest) returns (ServerNewContractResponse) {
+        option (google.api.http) = {
+            post: "/newcontract"
+            body: "*"
+        };
+    }
+
+    // CloseContract is used to close a contract with a specific uuid
+    rpc CloseContract (ServerCloseContractRequest) returns (ServerCloseContractResponse)  {
+        option (google.api.http) = {
+            post: "/closecontract"
+            body: "*"
+        };
+    }
+
+    // ListAssets lists all supported assets
+    rpc ListAssets (ServerListAssetsRequest) returns (ServerListAssetsResponse)  {
+        option (google.api.http) = {
+            post: "/listassets"
+            body: "*"
+        };
+    }
+}
+
+// Contract is the type of our contract, used to marshal/unmarshal
+// and send between hosts
+message ServerContract {
+    string uuid = 1;
+    string asset = 2;
+    double amount = 3;
+    int64 amount_sats = 4;
+    string client_host = 5;
+    string margin_pay_req = 6;
+    string initiating_pay_req = 7;
+    bool margin_paid = 8;
+    bool initiating_paid = 9;
+    ContractType contract_type = 10;
+
+    int64 num_updates = 11;
+}
+
+// Payment is a payment type, used to marshal/unmarshal from the db
+message Payment {
+    string contract_uuid = 1;
+    int64 amount_sat = 2;
+    string payment_request = 3;
+    // if true, this payment was outbound, ie paid by us
+    bool outbound = 4;
+}
+
+message Quote {
+    double percent_margin = 1;
+    int64 amount_sats = 2;
+    double asset_price = 3;
+}
+
+message Price {
+    string asset = 1;
+    double value = 2;
+}
+
+enum ContractType {
+    FUNDED = 0;
+    UNFUNDED = 1;
+}
+
+// ServerNewContractRequest is used to initiate a new contract
+// with another host
+message ServerNewContractRequest {
+    string asset = 1;
+    double amount = 2;
+    string host = 3;
+    ContractType contract_type = 4;
+}
+
+// If successful, the ServerNewContractResponse returns the created contract
+message ServerNewContractResponse {
+    string uuid = 1;
+    string margin_pay_req = 2;
+    string initiating_pay_req = 3;
+    double percent_margin = 4;
+    double asset_price = 5;
+}
+
+message ServerCloseContractRequest {
+    string uuid = 1;
+}
+
+message ServerCloseContractResponse {
+
+}
+
+message ServerListAssetsRequest {
+
+}
+
+message ServerListAssetsResponse {
+    repeated string supported_assets = 1;
+}

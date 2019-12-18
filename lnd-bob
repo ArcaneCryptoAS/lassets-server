@@ -1,0 +1,9 @@
+#! /usr/bin/env bash
+if [[ $* != *--network* ]]; then
+    BITCOIN_NETWORK="regtest"
+fi
+
+# echo executed commands
+set -o xtrace
+
+lncli --lnddir=docker/.bob --rpcserver=localhost:10012 --network $BITCOIN_NETWORK "$@"
