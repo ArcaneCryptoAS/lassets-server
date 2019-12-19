@@ -20,14 +20,15 @@ import (
 var _ larpc.AssetServerServer = &AssetServer{}
 
 type AssetServer struct {
-	lncli          lnrpc.LightningClient
-	db             *bolt.DB
-	insecure       bool
-	contracts      *bolt.Bucket
-	port           int
-	percentMargin  float64
-	priceServerURL string
-	bitmexApi      *bitmex.Bitmex
+	lncli              lnrpc.LightningClient
+	db                 *bolt.DB
+	insecure           bool
+	contracts          *bolt.Bucket
+	port               int
+	percentMargin      float64
+	priceServerURL     string
+	breakContractAfter int64
+	bitmexApi          *bitmex.Bitmex
 
 	// channels
 	paymentsCh          chan larpc.Payment
@@ -165,8 +166,9 @@ func (a AssetServer) CloseContract(ctx context.Context, req *larpc.ServerCloseCo
 		return nil, err
 	}
 
-	// close position on equal size bitmex
-	_, _, err = a.bitmexApi.MarketSell(contract.Amount)
+	// close position on equal size bitmex, always convert to USD
+	sellAmount := convertAssetAmount(contract.Asset, contract.Amount, "USD")
+	_, _, err = a.bitmexApi.MarketSell(sellAmount)
 	if err != nil {
 		return nil, fmt.Errorf("could not market sell: %w", err)
 	}
@@ -213,12 +215,45 @@ func (a AssetServer) SetPrice(asset string, amount float64) error {
 
 	prices[asset] = amount
 
+	// set price for all supported currencies
+	for to := range prices {
+		// skip if equal, price is already set
+		if to == asset {
+			continue
+		}
+		prices[asset] = convertAssetAmount(asset, amount, to)
+	}
+
 	err := a.rebalanceContracts()
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// getExchangeRate gets and exchange rate for the given pair
+// TODO: Hook into an api here instead of hard-coding rates..
+func getExchangeRate(base, quote string) float64 {
+	const nokusd = 9.1
+
+	if base == "NOK" && quote == "USD" { // NOK/USD
+		// usd is at the bottom, and we divide whatever other price on usd
+		return 1 / nokusd
+	}
+
+	if base == "USD" && quote == "NOK" { // USD/NOK
+		return nokusd
+	}
+
+	// the pairs are the same, and we just return 1
+	return 1
+}
+
+func convertAssetAmount(from string, amount float64, to string) float64 {
+	rate := getExchangeRate(from, to)
+
+	return amount * rate
 }
 
 func savePayment(db *bolt.DB, paymentCh chan larpc.Payment, payment larpc.Payment) error {

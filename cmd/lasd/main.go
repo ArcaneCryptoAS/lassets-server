@@ -335,8 +335,11 @@ func (a AssetServer) handleInvoices(db *bolt.DB, subscription lnrpc.Lightning_Su
 
 				case larpc.ContractType_FUNDED:
 					if contract.InitiatingPaid && contract.MarginPaid {
-						// contract is now open. To lock
-						resp, orderID, err := a.bitmexApi.MarketBuy(convertPercentOfAssetToSats())
+						// contract is now open. To lock the price for the client, hedge position on bitmex
+
+						// always convert to USD
+						buyAmount := convertAssetAmount(contract.Asset, contract.Amount, "USD")
+						resp, orderID, err := a.bitmexApi.MarketBuy(buyAmount)
 						if err != nil {
 							return fmt.Errorf("could not market buy: %w", err)
 						}
@@ -348,8 +351,8 @@ func (a AssetServer) handleInvoices(db *bolt.DB, subscription lnrpc.Lightning_Su
 
 				case larpc.ContractType_UNFUNDED:
 					if contract.MarginPaid {
-						// contract is now open
-						resp, orderID, err := a.bitmexApi.MarketBuy(contract.Amount)
+						buyAmount := convertAssetAmount(contract.Asset, contract.Amount, "USD")
+						resp, orderID, err := a.bitmexApi.MarketBuy(buyAmount)
 						if err != nil {
 							return fmt.Errorf("could not market buy: %w", err)
 						}
