@@ -3,6 +3,7 @@ package bitmex
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
@@ -138,6 +139,12 @@ func ListenToPrice(getPrice func(asset string) float64,
 
 		// TODO: Try to open new connection
 		if err == io.EOF {
+			// start new socket..
+			fmt.Println("received EOF from websocket")
+			go func() {
+				_ = ListenToPrice(getPrice, setPrice)
+			}()
+			break
 		}
 
 		var lastPrice priceUpdate
