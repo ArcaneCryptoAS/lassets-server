@@ -4,6 +4,8 @@ package ladrpc;
 
 option go_package = "arcanecrypto/lnassets-client/larpc";
 
+import "timestamp.proto";
+
 import "google/api/annotations.proto";
 
 service AssetServer {
@@ -46,11 +48,12 @@ message ServerContract {
     string client_host = 5;
     string margin_pay_req = 6;
     string initiating_pay_req = 7;
-    bool margin_paid = 8;
-    bool initiating_paid = 9;
-    ContractType contract_type = 10;
+    google.protobuf.Timestamp last_rebalanced_at = 8;
+    bool margin_paid = 9;
+    bool initiating_paid = 10;
+    ContractType contract_type = 11;
 
-    int64 num_updates = 11;
+    int64 num_updates = 12;
 }
 
 // Payment is a payment type, used to marshal/unmarshal from the db

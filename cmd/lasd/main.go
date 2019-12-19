@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"net"
 	"net/http"
 	"os"
@@ -59,8 +60,9 @@ const (
 	flag_lndrpchost         = "lndrpchost"
 	flag_percentmargin      = "percentmargin"
 	flag_insecure           = "insecure"
+	flag_breakafter         = "breakafter"
 
-	flag_bitmexapikey = "bitmexapikey"
+	flag_bitmexapikey    = "bitmexapikey"
 	flag_bitmexsecretkey = "bitmexsecretkey"
 )
 
@@ -120,13 +122,13 @@ func main() {
 		},
 
 		cli.StringFlag{
-			Name:  flag_bitmexapikey,
-			Usage: "api key for bitmex user. This should not be passed as cli flag, but as an environment variable ",
+			Name:   flag_bitmexapikey,
+			Usage:  "api key for bitmex user. This should not be passed as cli flag, but as an environment variable ",
 			EnvVar: "BITMEX_API_KEY",
 		},
 		cli.StringFlag{
-			Name:  flag_bitmexsecretkey,
-			Usage: "secret key for bitmex user. This should not be passed as cli flag, but as an environment variable",
+			Name:   flag_bitmexsecretkey,
+			Usage:  "secret key for bitmex user. This should not be passed as cli flag, but as an environment variable",
 			EnvVar: "BITMEX_SECRET_KEY",
 		},
 	}
@@ -159,9 +161,9 @@ func runLightningAssetDaemon(c *cli.Context) error {
 
 	// connect to lnd
 	lncli, err := lndutil.NewLNDClient(lndutil.LightningConfig{
-		LndDir:       c.String(flag_lnddir),
-		Network:      c.String(flag_network),
-		RPCServer:    c.String(flag_lndrpchost),
+		LndDir:    c.String(flag_lnddir),
+		Network:   c.String(flag_network),
+		RPCServer: c.String(flag_lndrpchost),
 	})
 	if err != nil {
 		return fmt.Errorf("could not connect to lnd: %w", err)
@@ -181,12 +183,13 @@ func runLightningAssetDaemon(c *cli.Context) error {
 	paymentCh := make(chan larpc.Payment)
 
 	assetServer := AssetServer{
-		lncli:         lncli,
-		db:            db,
-		insecure:      c.Bool(flag_insecure),
-		port:          c.Int(flag_port),
-		percentMargin: c.Float64(flag_percentmargin),
-		bitmexApi:     bitmexApi,
+		lncli:              lncli,
+		db:                 db,
+		insecure:           c.Bool(flag_insecure),
+		port:               c.Int(flag_port),
+		percentMargin:      c.Float64(flag_percentmargin),
+		bitmexApi:          bitmexApi,
+		breakContractAfter: c.Int64(flag_breakafter),
 
 		contractCh: contractCh,
 		paymentsCh: paymentCh,
@@ -238,6 +241,7 @@ func runLightningAssetDaemon(c *cli.Context) error {
 		log.Fatal(res)
 	}()
 
+	// if set, spawn a goroutine that rebalances all contracts every `--rebalancefrequency` seconds
 	if c.Int(flag_rebalancefrequency) != 0 {
 		go assetServer.rebalanceEvery(time.Second * time.Duration(c.Int(flag_rebalancefrequency)))
 	}
@@ -252,6 +256,7 @@ func runLightningAssetDaemon(c *cli.Context) error {
 }
 
 // handleInvoices handles all incoming invoices for our client
+// It only cares about settled invoices
 
 // NOTE: MUST be run in a gorountine
 func (a AssetServer) handleInvoices(db *bolt.DB, subscription lnrpc.Lightning_SubscribeInvoicesClient) error {
@@ -274,11 +279,12 @@ func (a AssetServer) handleInvoices(db *bolt.DB, subscription lnrpc.Lightning_Su
 		case lnrpc.Invoice_SETTLED:
 
 			if inv.Memo == "" {
-				// if memo is not registered. we don't need to deal with the payment, it's something else
+				// if memo is not registered. we don't need to deal with the payment,
+				// it's something else running on this node
 				continue
 			}
 
-			logger.Info("paid")
+			logger.Info("received payment")
 
 			// lookup the contract using the uuid from the payment requests memo
 			contractUUID := inv.Memo
@@ -294,21 +300,43 @@ func (a AssetServer) handleInvoices(db *bolt.DB, subscription lnrpc.Lightning_Su
 				}
 				logger := logger.WithField("uuid", contract.Uuid)
 
+				// First, we update the contract based on the settled paymentrequest
 				if inv.PaymentRequest == contract.MarginPayReq {
 					contract.MarginPaid = true
 					logger.Info("margin paid")
-				}
-				if inv.PaymentRequest == contract.InitiatingPayReq {
+				} else if inv.PaymentRequest == contract.InitiatingPayReq {
 					contract.InitiatingPaid = true
 					logger.Info("initiating paid")
+				} else {
+					// if its neither a marginpayreq or initiatingpayreq, we assume
+					// it is used for rebalancing a contract, and we reset the timer
+					// to indicate that this contract is recently rebalanced and does
+					// not need to be closed
+					now := time.Now()
+					contract.LastRebalancedAt = &timestamp.Timestamp{
+						Seconds: int64(now.Second()),
+						Nanos:   int32(now.Nanosecond()),
+					}
+
+					// save the contract with the latest RebalanceAt timestamp
+					// nothing more needs to be done after this, therefore we return
+					asByte, err = json.Marshal(contract)
+					if err != nil {
+						return fmt.Errorf("could not marshal contract: %w", err)
+					}
+
+					return b.Put([]byte(contract.Uuid), asByte)
 				}
 
-				// based on the contract type, we require either two invoices to be paid, or just the margin
+				// based on the contract type, we require either both margin and
+				// initiating paymentrequests to be paid, or just the margin
+				// if the contract
 				switch contract.ContractType {
-				case larpc.ContractType_FUNDED:
 
+				case larpc.ContractType_FUNDED:
 					if contract.InitiatingPaid && contract.MarginPaid {
-						resp, orderID, err := a.bitmexApi.MarketBuy(contract.Amount)
+						// contract is now open. To lock
+						resp, orderID, err := a.bitmexApi.MarketBuy(convertPercentOfAssetToSats())
 						if err != nil {
 							return fmt.Errorf("could not market buy: %w", err)
 						}
@@ -319,8 +347,8 @@ func (a AssetServer) handleInvoices(db *bolt.DB, subscription lnrpc.Lightning_Su
 					}
 
 				case larpc.ContractType_UNFUNDED:
-
 					if contract.MarginPaid {
+						// contract is now open
 						resp, orderID, err := a.bitmexApi.MarketBuy(contract.Amount)
 						if err != nil {
 							return fmt.Errorf("could not market buy: %w", err)
@@ -344,7 +372,7 @@ func (a AssetServer) handleInvoices(db *bolt.DB, subscription lnrpc.Lightning_Su
 				return b.Put([]byte(contract.Uuid), asByte)
 			})
 			if err != nil {
-				logger.WithError(err).Error("could not save contract as open")
+				logger.WithError(err).Error("could not update contract")
 			} else {
 				logger.Trace("successfully updated contract")
 			}
@@ -430,7 +458,8 @@ func (a AssetServer) rebalanceContracts() error {
 	for _, contract := range contracts {
 		err = a.rebalanceContract(contract)
 		if err != nil {
-			log.WithError(err).Error("could not rebalance contract with uuid", contract.Uuid)
+			log.WithError(err).WithField("uuid", contract.Uuid).
+				Error("could not rebalance contract ")
 		}
 	}
 
@@ -446,13 +475,24 @@ func (a AssetServer) rebalanceContract(contract larpc.ServerContract) error {
 		return fmt.Errorf("contract not open yet, initiating invoice not paid")
 	}
 
+	lastRebalancedAt := time.Unix(contract.LastRebalancedAt.Seconds, int64(contract.LastRebalancedAt.Nanos))
+	// if time of last rebalance is greater than 30 seconds, we close the contract
+	if time.Now().Add(time.Second * 30).After(lastRebalancedAt) {
+		_, err := a.CloseContract(context.Background(), &larpc.ServerCloseContractRequest{
+			Uuid: contract.Uuid,
+		})
+		if err != nil {
+			return fmt.Errorf("could not close inactive contract")
+		}
+		return nil
+	}
+
 	direction, rebalanceAmountSat := calculateRebalanceAmount(contract)
 
 	if rebalanceAmountSat == 0 {
 		return nil
 	}
 
-	// TODO: Insert real tlsPath from arguments here
 	client, cleanup, err := connectToLaClient(contract.ClientHost,
 		a.insecure, "")
 	if err != nil {

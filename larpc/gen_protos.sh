@@ -6,6 +6,7 @@ set -e
 for file in *.proto
 do
 	protoc -I/usr/local/include -I. \
+	       -I$GOPATH/src/github.com/golang/protobuf/ptypes/timestamp/ \
 	       -I$GOPATH/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
 	       --go_out=plugins=grpc,paths=source_relative:. \
 	       --grpc-gateway_out=logtostderr=true,paths=source_relative:. \
