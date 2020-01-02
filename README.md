@@ -1,17 +1,23 @@
-## Lightning Assets Server
+## Lightning Assets Server, non-custodial stable coins on lightning, using only bitcoin
 This project is the server side of a naive implementation of [lightning
  assets](http://research.paradigm.xyz/RainbowNetwork.pdf).
  
-The client side can be found here: [lightning assets client.](https://github.com/ArcaneCryptoAS/lassets-client) You need both a server and a client to set it up.
+The client can be found here: [lightning assets client.](https://github.com/ArcaneCryptoAS/lassets-client) You need both a server and a client to set it up.
 
-The purpose of this server is to create synthetic assets on the lightning
- network, by opening "contracts". The client and server will
-  continuously rebalance the contract, thereby making sure the satoshi balance
-   between them is always X [ASSET]. The asset of the contract
-    can be any asset both the client and server support. To determine the
-     price of the contract, the server and client have to agree on an oracle. As of today, this common price feed is [bitmex](https://bitmex.com).
+#### What are lightning assets?
+With this project, you can circumvent the problem of volatility in Bitcoin, and "peg" your lightning balance to
+a stable(or unstable) currency of your choice. This can be your local currency, dollar, euro, ethereum etc.
+It is non-custodial, meaning noone can take money from you, yay :tada:
 
-Sometime during the new year(january 2020), we will host a server you can connect to using just the client.
+#### How does it work
+As a client, you open "contracts" with the server. The client and server will continuously rebalance the
+contract, by sending sats client --> server if the price has dropped, or server --> client if the price
+has increased. The goal is to ensure the balance of the contract is always X [ASSET]. The asset of the contract
+can be any asset both the client and server support. To determine the price of the contract, the server and
+client have to agree on an oracle. As of today, this common price feed is [bitmex](https://bitmex.com).
+
+You do not need to run a server to test the project, only a client, which comes configured out of the box
+to connect to a server we are running.
  
 ### Installing  
 First download the project
@@ -31,14 +37,22 @@ lascli # Used to interface with the daemon
 If you already have a lnd-node you want to connect to, run `lasd --network=testnet` and everything should connect.
 
 ### Run on regtest
-Here are all the commands in two block, can be copy pasted
+##### Install direnv
 ```shell script
 # Installs direnv, a manager for environment variables
 sudo apt-get install direnv
 # you need to hook direnv into your shell: https://direnv.net/docs/hook.html
 cp .envrc-example .envrc
-
 ```
+
+Now hook direnv into your shell. [Instructions found here](https://direnv.net/docs/hook.html).
+
+##### Create a user on bitmex
+Second, you need a user on bitmex to test the project properly.
+1. Sign up on https://testnet.bitmex.com
+2. Create an API key
+3. copy-paste the `API_KEY` and `SECRET_KEY` into the .envrc file
+
 
 Then set everything up:
 ```shell script
@@ -46,15 +60,11 @@ Then set everything up:
 docker-compose up -d 
 scripts/connect-alice-bob.sh # Funds and connects the nodes
 
+# Start the daemon
+./lasd
 ```
 
-
-##### Start the daemon
-```
-$ ./lasd
-```
-
-Now you're ready to go! Install the [Lightning Assets Client](https://github.com/ArcaneCryptoAS/lassets-client), and get dirty!
+Now you're ready to go! The only remaining step is to set up a [Lightning Assets Client](https://github.com/ArcaneCryptoAS/lassets-client), and get dirty!
 
 ### Contributions 
 Contributions are very welcome, just go ahead and open issues/pull requests.
