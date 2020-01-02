@@ -184,4 +184,6 @@ func ListenToPrice(getPrice func(asset string) float64,
 			}
 		}
 	}
+
+	return nil
 }
