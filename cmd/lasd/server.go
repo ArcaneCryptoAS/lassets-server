@@ -214,6 +214,10 @@ func (a AssetServer) SetPrice(asset string, amount float64) error {
 	}
 
 	prices[asset] = amount
+	log.WithFields(logrus.Fields{
+		"asset": asset,
+		"price": amount,
+	}).Info("saved new price")
 
 	// set price for all supported currencies
 	for to := range prices {
@@ -221,7 +225,7 @@ func (a AssetServer) SetPrice(asset string, amount float64) error {
 		if to == asset {
 			continue
 		}
-		prices[asset] = convertAssetAmount(asset, amount, to)
+		prices[to] = convertAssetAmount(asset, amount, to)
 	}
 
 	err := a.rebalanceContracts()
