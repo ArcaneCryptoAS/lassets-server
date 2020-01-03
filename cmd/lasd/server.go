@@ -177,7 +177,7 @@ func (a AssetServer) CloseContract(ctx context.Context, req *larpc.ServerCloseCo
 		return json.Unmarshal(rawContract, &contract)
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not find or unmarshal contract: %w", err)
 	}
 
 	// if the contract is not open, we do not yet have long exposure for the contract on bitmex
@@ -192,7 +192,7 @@ func (a AssetServer) CloseContract(ctx context.Context, req *larpc.ServerCloseCo
 
 	err = deleteContract(a.db, req.Uuid)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("closecontract could not delete contract: %w", err)
 	}
 
 	return &larpc.ServerCloseContractResponse{}, nil
