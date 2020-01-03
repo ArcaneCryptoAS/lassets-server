@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"net"
@@ -24,6 +25,10 @@ import (
 	"github.com/urfave/cli"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+)
+
+var (
+	ErrContractNotOpen = errors.New("contract not open yet")
 )
 
 var (
@@ -417,7 +422,6 @@ func createBucketsIfNotExist(db *bolt.DB) error {
 // NOTE: Must be run in a goroutine
 func (a AssetServer) rebalanceEvery(frequency time.Duration) {
 	for {
-		log.Info("rebalancing")
 		err := a.rebalanceContracts()
 		if err != nil {
 			log.WithError(err).Info("could not rebalance contracts in goroutine")
@@ -461,8 +465,10 @@ func (a AssetServer) rebalanceContracts() error {
 	for _, contract := range contracts {
 		err = a.rebalanceContract(contract)
 		if err != nil {
+			if !errors.Is(err, ErrContractNotOpen) {
 			log.WithError(err).WithField("uuid", contract.Uuid).
-				Error("could not rebalance contract ")
+				Error("could not rebalance contract")
+			}
 		}
 	}
 
@@ -471,11 +477,11 @@ func (a AssetServer) rebalanceContracts() error {
 
 func (a AssetServer) rebalanceContract(contract larpc.ServerContract) error {
 	if !contract.MarginPaid {
-		return fmt.Errorf("contract not open yet, margin invoice not paid")
+		return fmt.Errorf("margin not paid: %w", ErrContractNotOpen)
 	}
 
 	if contract.ContractType == larpc.ContractType_FUNDED && !contract.InitiatingPaid {
-		return fmt.Errorf("contract not open yet, initiating invoice not paid")
+		return fmt.Errorf("initiating not paid: %w", ErrContractNotOpen)
 	}
 
 	lastRebalancedAt := time.Unix(contract.LastRebalancedAt.Seconds, int64(contract.LastRebalancedAt.Nanos))

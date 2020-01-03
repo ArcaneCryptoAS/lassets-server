@@ -224,7 +224,6 @@ func deleteContract(db *bolt.DB, uuid string) error {
 }
 
 func (a AssetServer) SetPrice(asset string, amount float64) error {
-	log.Infof("received set price request")
 
 	_, ok := prices[asset]
 	if !ok {
@@ -232,10 +231,6 @@ func (a AssetServer) SetPrice(asset string, amount float64) error {
 	}
 
 	prices[asset] = amount
-	log.WithFields(logrus.Fields{
-		"asset": asset,
-		"price": amount,
-	}).Info("saved new price")
 
 	// set price for all supported currencies
 	for to := range prices {
@@ -245,6 +240,11 @@ func (a AssetServer) SetPrice(asset string, amount float64) error {
 		}
 		prices[to] = convertAssetAmount(asset, amount, to)
 	}
+
+	log.WithFields(logrus.Fields{
+		"asset": asset,
+		"price": amount,
+	}).Info("saved new price")
 
 	err := a.rebalanceContracts()
 	if err != nil {

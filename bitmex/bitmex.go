@@ -172,11 +172,6 @@ func ListenToPrice(getPrice func(asset string) float64,
 		}).Trace("new price")
 
 		if math.Abs(data.LastPrice-getPrice("USD")) > 1 {
-			log.WithFields(logrus.Fields{
-				"savedPrice": getPrice("USD"),
-				"newPrice":   data.LastPrice,
-			}).Info("new price diff is high, saving new price")
-
 			// update the price
 			err = setPrice("USD", data.LastPrice)
 			if err != nil {
