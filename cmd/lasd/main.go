@@ -494,9 +494,19 @@ func (a AssetServer) rebalanceContract(contract larpc.ServerContract) error {
 		}
 		contract.LastRebalancedAt = now
 	}
-	lastRebalancedAt := time.Unix(contract.LastRebalancedAt.Seconds, int64(contract.LastRebalancedAt.Nanos))
-	// if time of last rebalance is greater than 30 seconds, we close the contract
-	if time.Now().Add(time.Second * 30).After(lastRebalancedAt) {
+
+	lastRebalancedAt, err := ptypes.Timestamp(contract.LastRebalancedAt)
+	if err != nil {
+		return fmt.Errorf("could not convert contract timestamp to time: %w", err)
+	}
+	// clean up any inactive contracts
+	if time.Now().Add(time.Second * 30).Before(lastRebalancedAt) {
+
+		log.WithFields(logrus.Fields{
+			"now": time.Now().UTC(),
+			"lastRebalancedAt": lastRebalancedAt.UTC(),
+		}).Info("closing inactive contract ")
+
 		_, err := a.CloseContract(context.Background(), &larpc.ServerCloseContractRequest{
 			Uuid: contract.Uuid,
 		})
