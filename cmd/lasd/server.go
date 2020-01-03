@@ -147,6 +147,20 @@ func saveContract(db *bolt.DB, contractCh chan larpc.ServerContract, contract la
 	return nil
 }
 
+func contractIsOpen(contract larpc.ServerContract) bool {
+	switch contract.ContractType {
+	case larpc.ContractType_FUNDED:
+		// both have to be paid
+		return contract.InitiatingPaid && contract.MarginPaid
+	case larpc.ContractType_UNFUNDED:
+		// only one has to be paid
+		return contract.MarginPaid
+	}
+
+	log.Warnf("contract has unsupported contracttype: %d", contract.ContractType)
+	return false
+}
+
 func (a AssetServer) CloseContract(ctx context.Context, req *larpc.ServerCloseContractRequest) (*larpc.ServerCloseContractResponse, error) {
 	log.Infof("received close contract request")
 
@@ -166,11 +180,14 @@ func (a AssetServer) CloseContract(ctx context.Context, req *larpc.ServerCloseCo
 		return nil, err
 	}
 
-	// close position on equal size bitmex, always convert to USD
-	sellAmount := convertAssetAmount(contract.Asset, contract.Amount, "USD")
-	_, _, err = a.bitmexApi.MarketSell(sellAmount)
-	if err != nil {
-		return nil, fmt.Errorf("could not market sell: %w", err)
+	// if the contract is not open, we do not yet have long exposure for the contract on bitmex
+	if contractIsOpen(contract) {
+		// close position on equal size bitmex, always convert to USD
+		sellAmount := convertAssetAmount(contract.Asset, contract.Amount, "USD")
+		_, _, err = a.bitmexApi.MarketSell(sellAmount)
+		if err != nil {
+			return nil, fmt.Errorf("could not market sell: %w", err)
+		}
 	}
 
 	err = deleteContract(a.db, req.Uuid)
@@ -180,6 +197,7 @@ func (a AssetServer) CloseContract(ctx context.Context, req *larpc.ServerCloseCo
 
 	return &larpc.ServerCloseContractResponse{}, nil
 }
+
 
 func (a AssetServer) ListAssets(ctx context.Context, req *larpc.ServerListAssetsRequest) (*larpc.ServerListAssetsResponse, error) {
 
