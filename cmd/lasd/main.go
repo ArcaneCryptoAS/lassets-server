@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"net"
 	"net/http"
@@ -484,6 +485,15 @@ func (a AssetServer) rebalanceContract(contract larpc.ServerContract) error {
 		return fmt.Errorf("initiating not paid: %w", ErrContractNotOpen)
 	}
 
+	if contract.LastRebalancedAt == nil {
+		// the contract has not been rebalanced yet, and has probably just
+		// been opened
+		now, err := ptypes.TimestampProto(time.Now())
+		if err != nil {
+			return fmt.Errorf("could not convert time.Now() to proto timestamp: %w", err)
+		}
+		contract.LastRebalancedAt = now
+	}
 	lastRebalancedAt := time.Unix(contract.LastRebalancedAt.Seconds, int64(contract.LastRebalancedAt.Nanos))
 	// if time of last rebalance is greater than 30 seconds, we close the contract
 	if time.Now().Add(time.Second * 30).After(lastRebalancedAt) {
