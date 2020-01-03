@@ -61,7 +61,6 @@ const (
 	flag_rest_port          = "restport"
 	flag_laddir             = "laddir"
 	flag_network            = "network"
-	flag_rebalancefrequency = "rebalancefrequency"
 	flag_lnddir             = "lnddir"
 	flag_lndrpchost         = "lndrpchost"
 	flag_percentmargin      = "percentmargin"
@@ -105,10 +104,6 @@ func main() {
 			Name:  flag_percentmargin,
 			Usage: "how many percent margin is necessary in a channel",
 			Value: defaultPercentMargin,
-		},
-		cli.IntFlag{
-			Name:  flag_rebalancefrequency,
-			Usage: "how often to rebalance channels",
 		},
 
 		// flags specific to connecting to lnd
@@ -246,11 +241,6 @@ func runLightningAssetDaemon(c *cli.Context) error {
 		res := http.ListenAndServe(fmt.Sprintf(":%d", c.Int(flag_rest_port)), router)
 		log.Fatal(res)
 	}()
-
-	// if set, spawn a goroutine that rebalances all contracts every `--rebalancefrequency` seconds
-	if c.Int(flag_rebalancefrequency) != 0 {
-		go assetServer.rebalanceEvery(time.Second * time.Duration(c.Int(flag_rebalancefrequency)))
-	}
 
 	log.Infof("grpc server listening on port %d", port)
 	err = grpcServer.Serve(lis)
@@ -416,20 +406,6 @@ func createBucketsIfNotExist(db *bolt.DB) error {
 		// add additional buckets here
 		return nil
 	})
-}
-
-// reabalanceEvery rebalances all the contracts every Duration
-
-// NOTE: Must be run in a goroutine
-func (a AssetServer) rebalanceEvery(frequency time.Duration) {
-	for {
-		err := a.rebalanceContracts()
-		if err != nil {
-			log.WithError(err).Info("could not rebalance contracts in goroutine")
-		}
-
-		time.Sleep(frequency)
-	}
 }
 
 type rebalanceType string
